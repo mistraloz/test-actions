@@ -1,0 +1,56 @@
+name: test
+
+on:
+  push:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        php_version: ['8.1','8.0']
+        variant: ['apache']
+        builder: [ {arch: "amd64", os: "ubuntu-latest"}, {arch: "arm64", os: "ubuntu-latest"}]
+    runs-on: ${{ matrix.builder.os }}
+    name: Test ${{ matrix.php_version }}-${{ matrix.variant }} ${{ matrix.builder.arch }}
+#    id: test-${{ matrix.php_version }}-${{ matrix.variant }}-${{ matrix.builder.arch }}
+    steps:
+      - name: 8.0 should fail
+        run: |
+          if [[ "${{ matrix.php_version }}" == "8.0" ]]; then exit 1; fi
+      - name: Generate env var1
+        run: |
+          VAR1=test
+          echo "VAR1=${VAR1}" >> $GITHUB_ENV
+      - name: Display env var1
+        run: |
+          echo "VAR1=$VAR1"
+      - name: Use jq
+        run: |
+          echo '{"test": 3}' > /tmp/test.txt
+          cat /tmp/test.txt | jq ".test"
+      - name: Waiting
+        run: |
+          sleep 10
+      - name: Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: logs-${{ matrix.php_version }}-${{ matrix.variant }}-${{ matrix.builder.arch }}
+          path: /tmp/test.txt
+          retention-days: 60
+
+  publish:
+    needs:
+      - test
+    runs-on: ubuntu-latest
+    name: Publish ${{ matrix.php_version }}-${{ matrix.variant }} multi-arch to dockerhub
+    strategy:
+      fail-fast: false
+      matrix:
+        php_version: ['8.1','8.0']
+        variant: ['apache']
+    steps:
+      - name: Echo
+        run: |
+          echo "test-${{ matrix.php_version }}-${{ matrix.variant }}-arm64"
+          echo "test-${{ matrix.php_version }}-${{ matrix.variant }}-amd64"
